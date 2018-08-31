@@ -1,4 +1,4 @@
-from subprocess import check_call, check_output
+from subprocess import call, check_call, check_output
 import sys
 import json
 
@@ -121,17 +121,39 @@ def init_parser(parser):
     parser.add_argument('--vep', action='store_true', help='Configure the cluster to run VEP.')
     parser.add_argument('--dry-run', action='store_true', help="Print gcloud dataproc command, but don't run it.")
 
+    # custom config file
+    parser.add_argument('--config-file', help='Pass in a custom json file to load configurations.')
+
 
 def main(args):
-    config_file = 'gs://amwang/{}-cloudtools-config.json'.format(args.version)
-    conf = ClusterConfig(check_output(['gsutil', 'cat', config_file]).strip())
-    if args.spark:
-        if args.spark not in conf.vars['supported_spark'].keys():
-            sys.stderr.write("ERROR: Hail version '{}' requires one of Spark {}."
-                             .format(args.version, ','.join(conf.vars['supported_spark'].keys())))
-            sys.exit(1)
-        conf.vars['spark'] = args.spark
-        conf.vars['image'] = conf.vars['supported_spark'][args.spark]
+    if not args.spark:
+        args.spark = '2.2.0' if args.version == 'devel' else '2.0.2'
+
+    if args.hash == 'latest':
+        hash_file = 'gs://hail-common/builds/{}/latest-hash-spark-{}.txt'.format(args.version, args.spark)
+        hash = check_output(['gsutil', 'cat', hash_file]).strip()
+        # Python 3 check_output returns a byte string that needs decoding
+        hash = hash.decode() if sys.version_info >= (3, 0) else hash
+    else:
+        hash = args.hash
+
+    if not args.config_file:
+        args.config_file = 'gs://hail-common/builds/{version}/config/hail-config-{version}-{hash}.json'.format(version=args.version, hash=hash)
+        exists = call(['gsutil', '-q', 'stat', args.config_file])
+        if exists != 0:
+            args.config_file = 'gs://hail-common/builds/{version}/config/hail-config-{version}-default.json'.format(version=args.version)
+    if args.config_file[:4] == 'gs://':
+        conf = ClusterConfig(check_output(['gsutil', 'cat', args.config_file]).strip())
+    else:
+        conf = ClusterConfig(check_output(['cat', args.config_file]).strip())
+
+    if args.spark not in conf.vars['supported_spark'].keys():
+        sys.stderr.write("ERROR: Hail version '{}' requires one of Spark {}."
+                         .format(args.version, ','.join(conf.vars['supported_spark'].keys())))
+        sys.exit(1)
+    conf.vars['spark'] = args.spark
+    conf.vars['image'] = conf.vars['supported_spark'][args.spark]
+    conf.vars['hash'] = hash
 
     # parse Spark and HDFS configuration parameters, combine into properties argument
     if args.properties:
@@ -154,15 +176,7 @@ def main(args):
 
     if args.jar and args.zip:
         conf.extend_flag('metadata', {'JAR': args.jar, 'ZIP': args.zip})
-    elif not (args.jar or args.zip):
-        if args.hash == 'latest':
-            hash_file = conf.format('gs://hail-common/builds/{version}/latest-hash-spark-{spark}.txt')
-            hash = check_output(['gsutil', 'cat', hash_file]).strip()
-            # Python 3 check_output returns a byte string that needs decoding
-            conf.vars['hash'] = hash.decode() if sys.version_info >= (3, 0) else hash
-        else:
-            conf.vars['hash'] = args.hash
-    else:
+    elif args.jar or args.zip:
         sys.stderr.write('ERROR: pass both --jar and --zip or neither')
         sys.exit(1)
 
