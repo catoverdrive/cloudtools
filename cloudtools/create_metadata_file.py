@@ -27,10 +27,11 @@ devel = {
     'vars': {
         'version': 'devel',
         'spark': '2.2.0',
-        'supported_spark': ['2.2.0']
+        'image': '1.2-deb',
+        'supported_spark': {'2.2.0': '1.2-deb'}
     },
     'flags': {
-        'image-version': '1.2-deb9',
+        'image-version': '{image}',
         'metadata': {'MINICONDA_VERSION': '4.4.10'}
     }
 }
@@ -39,10 +40,11 @@ v0_1 = {
     'vars': {
         'version': '0.1',
         'spark': '2.0.2',
-        'supported_spark': ['2.0.2']
+        'image': '1.1',
+        'supported_spark': {'2.0.2': '1.1'}
     },
     'flags': {
-        'image-version': '1.1',
+        'image-version': '{image}',
         'metadata': {'MINICONDA_VARIANT': '2'}
     }
 }

@@ -126,11 +126,12 @@ def main(args):
     config_file = 'gs://amwang/{}-cloudtools-config.json'.format(args.version)
     conf = ClusterConfig(check_output(['gsutil', 'cat', config_file]).strip())
     if args.spark:
-        if args.spark not in conf.vars['supported_spark']:
+        if args.spark not in conf.vars['supported_spark'].keys():
             sys.stderr.write("ERROR: Hail version '{}' requires one of Spark {}."
-                             .format(args.version, ','.join(conf.vars['supported_spark'])))
+                             .format(args.version, ','.join(conf.vars['supported_spark'].keys())))
             sys.exit(1)
         conf.vars['spark'] = args.spark
+        conf.vars['image'] = conf.vars['supported_spark'][args.spark]
 
     # parse Spark and HDFS configuration parameters, combine into properties argument
     if args.properties:
