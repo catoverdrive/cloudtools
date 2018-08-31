@@ -48,7 +48,7 @@ class ClusterConfig:
             self.flags[flag].update(values)
 
     def parse_and_extend(self, flag, values):
-        values = dict(tuple(pair.split('=')) for pair in values.split(','))
+        values = dict(tuple(pair.split('=')) for pair in values.split(',') if '=' in pair)
         self.extend_flag(flag, values)
 
     def format(self, obj):
@@ -142,7 +142,7 @@ def main(args):
         exists = call(['gsutil', '-q', 'stat', args.config_file])
         if exists != 0:
             args.config_file = 'gs://hail-common/builds/{version}/config/hail-config-{version}-default.json'.format(version=args.version)
-    if args.config_file[:4] == 'gs://':
+    if args.config_file.startswith('gs://'):
         conf = ClusterConfig(check_output(['gsutil', 'cat', args.config_file]).strip())
     else:
         conf = ClusterConfig(check_output(['cat', args.config_file]).strip())
