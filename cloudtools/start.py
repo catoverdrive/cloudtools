@@ -199,12 +199,11 @@ def main(args):
     conf.flags['worker-machine-type'] = args.worker_machine_type
     conf.flags['zone'] = args.zone
     conf.flags['initialization-action-timeout'] = args.init_timeout
+    if args.bucket:
+        conf.flags['bucket'] = args.bucket
 
     # command to start cluster
     cmd = conf.get_command(args.name)
-
-    if args.bucket:
-        cmd.append('--bucket={}'.format(args.bucket))
 
     if args.max_idle:
         cmd.insert(1, 'beta')
